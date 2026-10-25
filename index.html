@@ -437,6 +437,12 @@ a.link-btn:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
 .rot-ov span{font-size:var(--t2);color:#cfc8ff;line-height:1.6;word-break:keep-all}
 @keyframes rotph{0%,20%{transform:rotate(0)}50%,80%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
 @media (orientation:portrait) and (max-width:600px) and (pointer:coarse){.rot-ov{display:flex}}
+.mem-wrap{position:relative;display:flex;min-width:0}
+.mem-wrap .mem{flex:1;width:100%}
+.mem-x{position:absolute;top:2px;right:2px;min-width:0;min-height:0;padding:1px 5px;font-size:var(--t1);line-height:1.3;background:#2a1a4a;color:#ff7aa8;border:1px solid #ff3fa4;box-shadow:none;z-index:2}
+.mem-x:hover{background:#ff3fa4;color:#fff}
+.add-seats{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.add-seats .mini-btn{padding:2px 8px}
 @media (max-width:640px){
   .logo.big h1{font-size:calc(var(--t1) * 4)}
   .daw{grid-template-columns:128px minmax(0,1fr)}
@@ -1150,6 +1156,7 @@ function showCredits(){const close=()=>ov.remove();
   document.body.append(ov);}
 
 // ---------- V17: 6명보다 적을 때 선생님이 쓸 수호대원을 고름. 채널 번호 = 수호대원 번호(1~6) 그대로 ----------
+const gList=(r,g)=>{const grp=r&&S.groups[gid(r.roomId,g)];return grp&&Array.isArray(grp.heroes)&&grp.heroes.length?grp.heroes.slice().sort((a,b)=>a-b):chList(r);};
 const chList=r=>r&&Array.isArray(r.heroes)&&r.heroes.length?r.heroes.slice().sort((a,b)=>a-b):Array.from({length:(r&&r.channels)||6},(_,i)=>i+1);
 function heroPicker(state,onChange){const box=el('div',{class:'hero-pick'});
   const draw=()=>{box.replaceChildren();const full=state.heroes.length>=state.channels;
@@ -1257,7 +1264,7 @@ function playCtx(){
   const r=S.room;if(!r)return null;
   let g; if(S.role==='teacher'){if(S.tPlay==null)return null;g=S.tPlay;} else {if(!S.me)return null;g=S.me.g;}
   const grp=S.groups[gid(r.roomId,g)]||{};const total=r.bars*SPB;const list=[];
-  for(const c of chList(r)){
+  for(const c of gList(r,g)){
     if(S.mutes[c])continue;
     if(S.role==='student'&&S.scope==='mine'&&c!==S.me.c)continue;
     let tr;
@@ -1283,7 +1290,9 @@ function subscribeRoomData(roomId){
   S.unsubs.forEach(u=>u());S.unsubs=[];S.groups={};S.tracks={};
   if(!roomId)return;
   const err=e=>{console.error(e);toast('실시간 연결이 끊겼어요. 페이지를 새로 고쳐 주세요.');};
-  S.unsubs.push(S.db.collection('groups').where('roomId','==',roomId).onSnapshot(snap=>{const o={};snap.docs.forEach(d=>o[d.id]=d.data());S.groups=o;render();},err));
+  S.unsubs.push(S.db.collection('groups').where('roomId','==',roomId).onSnapshot(snap=>{const o={};snap.docs.forEach(d=>o[d.id]=d.data());S.groups=o;
+    if(S.role!=='teacher'&&S.me&&S.room&&S.me.roomId===S.room.roomId&&o[gid(S.room.roomId,S.me.g)]&&!gList(S.room,S.me.g).includes(S.me.c)){stop();S.me=null;S.local=null;ss('me',null);S.key='';toast('선생님이 모둠 자리를 바꿨어요. 수호대원을 다시 골라 주세요.');}
+    if(S.role!=='teacher'&&S.me&&S.room){const k=gList(S.room,S.me.g).join(',');if(S.mySeats!=null&&S.mySeats!==k)S.key='';S.mySeats=k;}render();},err));
   S.unsubs.push(S.db.collection('tracks').where('roomId','==',roomId).onSnapshot(snap=>{const o={};snap.docs.forEach(d=>o[d.id]=d.data());S.tracks=o;
     if(S.role==='student'&&S.me&&!S.local){const mine=o[tid(roomId,S.me.g,S.me.c)];if(mine)S.local={inst:mine.inst,oct:mine.oct,notes:toSet(mine.notes)};}
     if(S.role==='student'&&S.me&&S.local){const mine=o[tid(roomId,S.me.g,S.me.c)];if(mine)S.local.patch=mine.patch|0;}
@@ -1674,7 +1683,7 @@ function burstJingle(){try{const a=ac(),t=a.currentTime+.03;const notes=[72,76,7
   notes.forEach((m,i)=>one(m,t+i*.075,.09,.07));
   one(91,t+0.62,.75,.08,true);one(79,t+0.62,.75,.05,true);}catch(e){}}
 function showListen(g,intro){if(LIS.on)LIS.on.close();const r=S.room;if(!r)return;const T0=intro?0.62:0;
-  const W=OP.W,H=OP.H,chs=chList(r).filter(c=>{const t=S.tracks[tid(r.roomId,g,c)];return t&&t.name;});const cs=chs.length?chs:chList(r);
+  const W=OP.W,H=OP.H,chs=gList(r,g).filter(c=>{const t=S.tracks[tid(r.roomId,g,c)];return t&&t.name;});const cs=chs.length?chs:gList(r,g);
   const ov=el('div',{class:'op-ov ls-ov',role:'dialog','aria-label':`${g}모둠 작품 감상`});const cv=el('canvas',{class:'op-cv',width:W,height:H,'aria-hidden':'true'});
   const pb=el('button',{type:'button',class:'btn-primary btn-big','data-nosfx':'1'},'■ 정지');
   const close=()=>{if(!LIS.on)return;LIS.on=null;cancelAnimationFrame(raf);removeEventListener('resize',fit);removeEventListener('keydown',kd);ov.remove();if(A.timer&&S.tPlay===g)stop();};
@@ -1776,10 +1785,10 @@ function updateJoin(){const r=S.room;if(!r)return;const pg=$('#pickG'),pc=$('#pi
   pg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.g===S.jg)));
   pc.replaceChildren();
   if(!S.jg){pc.append(el('span',{class:'muted'},'모둠을 먼저 골라 주세요.'));}
-  else for(const c of chList(r)){const t=S.tracks[tid(r.roomId,S.jg,c)];const h=hero(c);const taken=takenBy(t);
+  else for(const c of gList(r,S.jg)){const t=S.tracks[tid(r.roomId,S.jg,c)];const h=hero(c);const taken=takenBy(t);
     if(taken&&S.jc===c)S.jc=null;
     pc.append(el('button',{type:'button',class:'hero-card'+(taken?' is-taken':''),style:`--hc:${h.color}`,'aria-pressed':String(S.jc===c),disabled:taken,'aria-disabled':String(taken),
-        onclick:()=>{if(takenBy(S.tracks[tid(r.roomId,S.jg,c)])){toast('이미 다른 친구가 고른 수호대원이에요.');return;}S.jc=c;updateJoin();const cd=$('#pickC').children[chList(r).indexOf(c)];heroShow(c,cd&&cd.querySelector('.sprite'));}},
+        onclick:()=>{if(takenBy(S.tracks[tid(r.roomId,S.jg,c)])){toast('이미 다른 친구가 고른 수호대원이에요.');return;}S.jc=c;updateJoin();const cd=$('#pickC').children[gList(r,S.jg).indexOf(c)];heroShow(c,cd&&cd.querySelector('.sprite'));}},
       heroImg(c,120,taken?'':S.jc===c?'bob smile':'bob'),el('b',{},h.name),el('small',{},`채널 ${c} · ${h.role}`),
       taken?el('span',{class:'taken'},`선택 완료 · ${t.name||'친구'}`):t&&t.owner===DEV?el('span',{class:'taken mine'},'내가 고른 자리'):el('small',{},'빈자리 · 먼저 고르면 내 자리')));}
   $('#jgo').disabled=!(S.jg&&S.jc);}
@@ -1820,19 +1829,19 @@ function mountDaw(app){const r=S.room,me=S.me,h=hero(me.c);
     el('div',{class:'daw px'},el('div',{class:'heads',id:'heads'}),el('div',{class:'scroller'},el('div',{class:'lanes',id:'lanes'},el('div',{class:'playhead',id:'playhead',hidden:true})))),
     el('p',{class:'notice'},'칸을 누르면 음이 들어가고, 다시 누르면 빠져요. 음을 누른 채 오른쪽으로 끌거나 ‘음 길이’를 고르면 길게 낼 수 있어요. 밝게 빛나는 줄은 그 마디 코드의 구성음이라 잘 어울려요. 옥타브는 수호대원마다 따로 바꿀 수 있어요.'),
     el('div',{class:'row'},el('button',{type:'button',class:'mini-btn',onclick:()=>{stop();releaseSeat();S.me=null;S.local=null;ss('me',null);render();}},'모둠·수호대원 다시 고르기'),soloBtn('mini-btn'),roleSwitch()));
-  const stg=$('#stage');for(const c of chList(r))stg.append(el('figure',{'data-ch':c,class:c===me.c?'me':''},heroImg(c,104,'bob',me.g),el('figcaption',{id:'stg'+c},hero(c).name)));
+  const stg=$('#stage');for(const c of gList(r,me.g))stg.append(el('figure',{'data-ch':c,class:c===me.c?'me':''},heroImg(c,104,'bob',me.g),el('figcaption',{id:'stg'+c},hero(c).name)));
   const heads=$('#heads'),lanes=$('#lanes');
   heads.append(el('div',{class:'rh label'},'수호대원'));
   lanes.append(el('div',{class:'ruler',style:'height:44px'},el('div',{class:'ruler-chords',id:'rChords'}),el('div',{class:'ruler-bars',id:'rBars'})));
   for(let b=0;b<r.bars;b++)$('#rBars').append(el('div',{style:`width:${SPB*CELL}px`},`BAR ${b+1}`));
-  for(const c of chList(r)){
+  for(const c of gList(r,me.g)){
     const mine=c===me.c,hh=mine?rowsOf(instOf(c,S.local))*ROW_MINE:7*ROW_MINI;
     heads.append(el('div',{class:'lh'+(mine?' mine':''),id:'lh'+c,style:`height:${hh}px;--c:${chColor(c)}`}));
     const cv=el('canvas',{class:'lane'+(mine?' edit':''),id:'cv'+c,'aria-label':`${hero(c).name} 채널 악보`});
     lanes.append(cv);if(mine)bindEdit(cv);}
   buildHeads();updateTransport();}
 function buildHeads(){const r=S.room,me=S.me;const grp=myGroup()||{};
-  for(const c of chList(r)){const head=$('#lh'+c);if(!head)continue;const mine=c===me.c;if(mine&&!S.local)continue;
+  for(const c of gList(r,me.g)){const head=$('#lh'+c);if(!head)continue;const mine=c===me.c;if(mine&&!S.local)continue;
     const d=S.tracks[tid(r.roomId,me.g,c)];const inst=mine?S.local.inst:d&&d.inst;const h=hero(c);
     if(mine&&head.dataset.built){updateMineHead();const lt=$('#leadTag');if(lt)lt.hidden=grp.leader!==c;continue;}
     if(!mine){const sig=[d&&d.name,inst,d&&d.patch,grp.leader===c,grp.leader===me.c,phase()].join('|');if(head.dataset.sig===sig&&head.firstChild)continue;head.dataset.sig=sig;}
@@ -1905,7 +1914,7 @@ function drawLane(cv,set,color,rowH,opts){const r=S.soloOn&&S.solo?S.solo:S.room
     if(h>6){x.fillStyle=hi;x.fillRect(px,py,w,2);x.fillRect(px,py,2,h);x.fillStyle=lo;x.fillRect(px,py+h-2,w,2);x.fillRect(px+w-2,py,2,h);}});
   if(opts.dim){x.fillStyle='rgba(11,8,32,.5)';x.fillRect(0,0,W,H);}updHist();}
 function drawAll(){const r=S.room,me=S.me;if(!r||!me)return;const grp=myGroup()||{};const dim=locked()&&phase()==='lobby';
-  for(const c of chList(r)){const cv=$('#cv'+c);if(!cv)continue;
+  for(const c of gList(r,me.g)){const cv=$('#cv'+c);if(!cv)continue;
     if(c===me.c&&S.local)drawLane(cv,S.local.notes,chColor(c),ROW_MINE,{chords:grp.chords,drum:S.local.inst==='drum',inst:S.local.inst,dim});
     else{const d=S.tracks[tid(r.roomId,me.g,c)];drawLane(cv,toSet(d&&d.notes),chColor(c),ROW_MINI*7/rowsOf(instOf(c,d)),{chords:null,drum:true,inst:instOf(c,d),dim});}}}
 
@@ -1918,7 +1927,7 @@ function updateDaw(){const r=S.room,me=S.me;if(!r||!me||!$('#heads'))return;cons
   const pill=$('#phasePill');pill.className='pill '+({lobby:grp.ready?'ok':'',running:'run',ended:'ok'}[ph]||'');
   pill.textContent=ph==='lobby'?(grp.ready?'작전 준비 완료':'작전 회의 중'):PHASE_TXT[ph]||'';
   $('#bpmInfo').textContent=`BPM ${grp.bpm||90}`;
-  for(const c of chList(r)){const fc=$('#stg'+c);if(!fc)continue;const d=S.tracks[tid(r.roomId,me.g,c)];fc.replaceChildren(el('b',{style:`color:${chColor(c)}`},hero(c).name),el('span',{},c===me.c?`${me.name} (나)`:d&&d.name?d.name:'빈자리'));
+  for(const c of gList(r,me.g)){const fc=$('#stg'+c);if(!fc)continue;const d=S.tracks[tid(r.roomId,me.g,c)];fc.replaceChildren(el('b',{style:`color:${chColor(c)}`},hero(c).name),el('span',{},c===me.c?`${me.name} (나)`:d&&d.name?d.name:'빈자리'));
     const fig=fc.parentNode;fig.classList.toggle('empty',!d&&c!==me.c);fig.classList.toggle('muted',!!S.mutes[c]);}
   const rc=$('#rChords');rc.replaceChildren();for(let b=0;b<r.bars;b++){const ch=(grp.chords||[])[b];rc.append(el('div',{style:`width:${SPB*CELL}px;${ch?'':'color:var(--muted)'}`},ch||'·'));}
   const lm=$('#lockmsg');lm.replaceChildren();
@@ -2126,9 +2135,11 @@ function updateTeacher(){const r=S.room;if(!r||!$('#cards'))return;const ph=phas
   const cards=$('#cards');cards.replaceChildren();
   grs.forEach(grp=>{const g=grp.g;const ref=S.db.collection('groups').doc(gid(r.roomId,g));
     const mem=el('div',{class:'members'});const joined=[];
-    for(const c of chList(r)){const t0=S.tracks[tid(r.roomId,g,c)];const t=t0&&t0.name?t0:null;if(t)joined.push(c);
-      mem.append(el('button',{type:'button',class:'mem'+(t?'':' empty'),'aria-pressed':String(grp.leader===c),disabled:ph!=='lobby',title:'리더로 지정',
-        onclick:()=>write('g'+g,()=>ref.update({leader:c,ready:false}))},heroImg(c,80,'portrait'+(t?' bob':''),g),el('span',{style:`color:${chColor(c)}`},grp.leader===c?'★ 리더':hero(c).name),el('span',{},t&&t.name?t.name:'빈자리')));}
+    const seats=gList(r,g);for(const c of seats){const t0=S.tracks[tid(r.roomId,g,c)];const t=t0&&t0.name?t0:null;if(t)joined.push(c);
+      mem.append(el('div',{class:'mem-wrap'},el('button',{type:'button',class:'mem'+(t?'':' empty'),'aria-pressed':String(grp.leader===c),disabled:ph!=='lobby',title:'리더로 지정',
+        onclick:()=>write('g'+g,()=>ref.update({leader:c,ready:false}))},heroImg(c,80,'portrait'+(t?' bob':''),g),el('span',{style:`color:${chColor(c)}`},grp.leader===c?'★ 리더':hero(c).name),el('span',{},t&&t.name?t.name:'빈자리')),
+        ph==='lobby'&&seats.length>1?confirmBtn('✕',t?'빼기?':'빼기',()=>removeSeat(g,c),'mem-x'):''));}
+    const missing=[1,2,3,4,5,6].filter(c=>!seats.includes(c));
     const status=!grp.leader?el('span',{class:'pill warn'},'리더 미정'):grp.ready?el('span',{class:'pill ok'},'준비 완료'):el('span',{class:'pill'},'작전 회의 중');
     const noteCount=joined.reduce((n,c)=>n+((S.tracks[tid(r.roomId,g,c)]||{}).notes||[]).length,0);
     const playing=S.tPlay===g&&A.timer;
@@ -2136,14 +2147,22 @@ function updateTeacher(){const r=S.room;if(!r||!$('#cards'))return;const ph=phas
     cards.append(el('div',{class:'card px'+(playing?' playing':'')+(gDone?' done':'')},
       el('div',{class:'card-head'},el('h2',{},`${g}모둠`),ph==='lobby'?status:gDone?el('span',{class:'pill ok'},'창작 종료'):el('span',{class:'mono',style:'color:var(--cyan)'},`NOTES ${noteCount}`)),
       el('div',{class:'stack',style:'gap:6px'},el('span',{class:'label'},ph==='lobby'?'수호대원 · 눌러서 리더 지정':'수호대원'),mem),
+      ph==='lobby'&&missing.length?el('div',{class:'add-seats'},el('span',{class:'label'},'자리 추가'),...missing.map(c=>el('button',{type:'button',class:'mini-btn',style:`color:${chColor(c)}`,onclick:()=>addSeat(g,c)},'+ '+hero(c).name))):'',
       ph==='lobby'?el('div',{},el('button',{type:'button',class:'mini-btn',onclick:()=>randomLeader(g)},'랜덤으로 리더 뽑기')):'',
       el('div',{class:'stack',style:'gap:6px'},el('span',{class:'label'},`코드 진행 · BPM ${grp.bpm||90} · 반주 ${grp.pad===false?'OFF':'ON'} · 리더가 정해요`),
         el('div',{class:'chips'},(grp.chords&&grp.chords.length?grp.chords:Array(r.bars).fill(null)).map(ch=>el('span',{class:'chip'+(ch?'':' empty')},ch||'?')))),
       el('div',{class:'row'},el('button',{type:'button','data-nosfx':'1',class:playing?'btn-primary':'',onclick:()=>{if(playing){stop();return;}stop();if(ph==='ended'||gDone){showListen(g,true);return;}S.tPlay=g;play();updateTeacher();}},playing?'■ 정지':'▶ 모둠 곡 재생'),
         ph==='running'?(gDone?el('button',{type:'button',class:'mini-btn',onclick:()=>write('g'+g,()=>ref.update({done:false}))},'이 모둠 다시 열기'):confirmBtn('이 모둠 창작 종료','한 번 더 누르면 종료',()=>endGroup(g),'mini-btn')):'')));});
   tickTimer();}
-function randomLeader(g){const r=S.room;const joined=[];for(const c of chList(r)){const t=S.tracks[tid(r.roomId,g,c)];if(t&&t.name)joined.push(c);}
-  const pool=joined.length?joined:chList(r);const c=pool[Math.floor(Math.random()*pool.length)];
+// 모둠별 자리 빼기·더하기 (작전 회의 중)
+function removeSeat(g,c){const r=S.room,grp=S.groups[gid(r.roomId,g)]||{};const list=gList(r,g).filter(x=>x!==c);if(!list.length)return;
+  const patch={heroes:list,ready:false};if(grp.leader===c)patch.leader=null;
+  write('g'+g,()=>S.db.collection('groups').doc(gid(r.roomId,g)).update(patch));
+  const t=S.tracks[tid(r.roomId,g,c)];if(t&&(t.name||t.owner))write('t'+g+c,()=>S.db.collection('tracks').doc(tid(r.roomId,g,c)).update({owner:null,name:''}));}
+function addSeat(g,c){const r=S.room;const list=[...new Set([...gList(r,g),c])].sort((a,b)=>a-b);
+  write('g'+g,()=>S.db.collection('groups').doc(gid(r.roomId,g)).update({heroes:list,ready:false}));}
+function randomLeader(g){const r=S.room;const joined=[];for(const c of gList(r,g)){const t=S.tracks[tid(r.roomId,g,c)];if(t&&t.name)joined.push(c);}
+  const pool=joined.length?joined:gList(r,g);const c=pool[Math.floor(Math.random()*pool.length)];
   return write('g'+g,()=>S.db.collection('groups').doc(gid(r.roomId,g)).update({leader:c,ready:false}));}
 function randomAll(){const r=S.room;for(let g=1;g<=r.groupCount;g++){const grp=S.groups[gid(r.roomId,g)];if(!grp||!grp.leader)randomLeader(g);}}
 
@@ -2155,7 +2174,7 @@ function fanfare(kind){try{const ctx=ac();const t0=ctx.currentTime+.05;
   const last=kind==='start'?.55:.6;[0,4,7].forEach(d=>{const g=gainEnv(t0+last,.06,.01,1.1);osc('sawtooth',hz(48+d+(kind==='start'?12:12)),t0+last,t0+last+1.2,filt('lowpass',1600,0,g));});
   drum(0,t0,1);drum(0,t0+last,1);drum(6,t0+last,1);}catch(e){}}
 function cutscene(kind){if(S.cutOpen||!S.room)return;S.cutOpen=true;
-  const list=S.role==='teacher'?[1,2,3,4,5,6]:chList(S.room);const g=S.role==='student'&&S.me?S.me.g:null;
+  const list=S.role==='teacher'?[1,2,3,4,5,6]:S.me?gList(S.room,S.me.g):chList(S.room);const g=S.role==='student'&&S.me?S.me.g:null;
   const heroes=el('div',{class:'cut-heroes'});for(const c of list){const im=heroImg(c,128,kind==='end'?'smile':'',g);im.style.animationDelay=(kind==='start'?c*0.08:c*0.12)+'s';heroes.append(im);}
   const ov=el('div',{class:'cut '+kind,role:'dialog','aria-live':'assertive','aria-label':kind==='start'?'출동':'임무 완료'},
     el('div',{class:'cut-lines'}),
