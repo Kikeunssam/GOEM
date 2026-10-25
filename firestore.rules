@@ -1,17 +1,9 @@
 rules_version = '2';
-// 전자음악수호대 Firestore 보안 규칙
-// 모두 익명 로그인. 지휘본부는 잠금 없이 누구나 열 수 있음.
+// 전자음악수호대 Firestore 보안 규칙: 앱에 들어온 사람(익명 로그인)만 읽고 씀
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    match /rooms/{id} {
-      allow read, write: if signedIn();
-    }
-    match /groups/{id} {
-      allow read, write: if signedIn();
-    }
-    match /tracks/{id} {
-      allow read, write: if signedIn();
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }
