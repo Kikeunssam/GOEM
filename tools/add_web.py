@@ -1,5 +1,5 @@
 """claude.ai 아티팩트판(app-vNN.html) → 깃허브 페이지판(index.html).
-실시간 저장소: claude.ai db → Firebase Firestore(compat SDK). 선생님 = 처음 구글 로그인으로 meta/owner를 차지한 계정, 학생 = 익명 로그인.
+실시간 저장소: claude.ai db → Firebase Firestore(compat SDK). 모두 익명 로그인. 지휘본부는 잠금 없이 누구나(#teacher).
 python3 tools/add_web.py <app-vNN.html> <index.html>
 """
 import sys
@@ -36,28 +36,8 @@ rep("""    const lease=await ref.acquire({holder:DEV,ttlMs:4000});
     S.local={inst:got.inst,oct:got.oct,notes:toSet(got.notes)};
 """)
 
-# 지휘본부는 선생님 구글 계정만
-rep("tsetup:mountSetup,tdash:mountTeacher,","tsetup:a=>S.isOwner?mountSetup(a):mountLogin(a),tdash:a=>S.isOwner?mountTeacher(a):mountLogin(a),")
-rep("function mountWait(app){",r"""// ----- 선생님 로그인 (깃허브판) -----
-async function ownerCheck(){const u=S.auth&&S.auth.currentUser;
-  if(!u||u.isAnonymous){S.isOwner=null;return;}
-  const ref=S.db.doc('meta/owner');let snap=await ref.get();
-  if(!snap.exists){try{await ref.set({uid:u.uid});}catch(e){console.error(e);}snap=await ref.get();}
-  S.isOwner=snap.exists&&snap.data().uid===u.uid;}
-async function teacherLogin(){const b=$('#tlogin');if(b)b.disabled=true;
-  try{await S.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());await ownerCheck();}
-  catch(e){console.error(e);toast('로그인하지 못했어요. 팝업 차단을 풀고 다시 눌러 주세요.');}
-  S.key='';render();}
-async function teacherLogout(){try{await S.auth.signOut();await S.auth.signInAnonymously();}catch(e){console.error(e);}S.isOwner=null;S.key='';render();}
-function mountLogin(app){const u=S.auth&&S.auth.currentUser,wrong=u&&!u.isAnonymous&&S.isOwner===false;
-  app.append(el('div',{class:'title-screen'},bigLogo(),
-    el('div',{class:'px panel stack',style:'max-width:560px'},el('h2',{},'지휘본부 로그인'),
-      wrong?el('p',{},`${u.email||'이 계정'}은 지휘본부 계정이 아니에요. 처음 로그인한 선생님 계정으로 다시 로그인해 주세요.`)
-        :el('p',{},'지휘본부는 선생님 구글 계정으로만 열 수 있어요. 처음 로그인한 계정이 지휘본부 계정으로 정해져요.'),
-      el('div',{class:'row',style:'gap:10px'},
-        wrong?el('button',{type:'button',onclick:teacherLogout},'로그아웃'):el('button',{type:'button',id:'tlogin',class:'btn-primary',onclick:teacherLogin},'구글 계정으로 로그인')))));}
+# 지휘본부: 잠금 없음(사용자 결정). 누구나 #teacher로 열 수 있음
 
-function mountWait(app){""")
 rep("function routeRole(){const h=(location.hash||'').slice(1);if(h==='student'||h==='solo')return 'student';if(h==='teacher')return S.isOwner===false?'student':'teacher';return null;}",
     "function routeRole(){const h=(location.hash||'').slice(1);if(h==='student'||h==='solo')return 'student';if(h==='teacher')return 'teacher';return null;}")
 rep("S.role=r||ss('role');if(S.role==='teacher'&&S.isOwner===false)S.role=null;","S.role=r||ss('role');")
@@ -71,7 +51,7 @@ rep("""  let db=null;try{db=await window.claude.use('db');}catch(e){db=null;}
   try{firebase.initializeApp(window.GOEM_FIREBASE);S.auth=firebase.auth();db=firebase.firestore();
     await new Promise(res=>{const un=S.auth.onAuthStateChanged(()=>{un();res();});});
     if(!S.auth.currentUser)await S.auth.signInAnonymously();
-    S.db=db;await ownerCheck();}
+    S.db=db;S.isOwner=true;}
   catch(e){console.error(e);db=null;S.db=null;}
 """)
 rep("if(window.claude&&window.claude.use)boot();else{S.db=null;render();}",
