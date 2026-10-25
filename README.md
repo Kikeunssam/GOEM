@@ -15,6 +15,15 @@
 
 지휘본부(`#teacher`)는 잠금 없이 누구나 열 수 있습니다. 학생에게는 `#student` 주소만 나눠 주세요.
 
+## 배포 (Firebase Hosting)
+
+주소: https://goem-82232.web.app
+
+```
+cd ~/GOEM && git pull
+npx -y firebase-tools@13 deploy --only hosting --project goem-82232
+```
+
 ## 다시 만들기
 
 `index.html`은 claude.ai 아티팩트판(`src/app-vNN.html`)에서 만듭니다.
