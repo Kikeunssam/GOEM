@@ -3578,7 +3578,7 @@ function playCtx(){
     else {const d=S.tracks[tid(r.roomId,g,c)];if(!d)continue;tr={c,inst:instKey(d),oct:d.oct,set:toSet(d.notes)};}
     list.push(tr);}
   return {g,bpm:grp.bpm||90,total,chords:grp.chords||[],list,pad:S.role==='teacher'?grp.pad!==false:S.pad};}
-function toSet(arr){const s=new Map();(arr||[]).forEach(p=>{if(Array.isArray(p))s.set(p[0]+':'+p[1],Math.max(1,(p[2]|0)||1));});return s;}
+function toSet(arr){const s=new Map();(arr||[]).forEach(p=>{if(typeof p==='string')p=p.split(':').map(Number);if(Array.isArray(p))s.set(p[0]+':'+p[1],Math.max(1,(p[2]|0)||1));});return s;}
 const notesOut=m=>[...m].map(([k,l])=>{const a=k.split(':').map(Number);if(l>1)a.push(l);return a;});
 function play(){ac();if(A.timer)return;A.step=0;A.next=A.ctx.currentTime+.08;A.marks=[];A.timer=setInterval(tick,25);tick();requestAnimationFrame(frame);updateTransport();}
 function stop(){clearInterval(A.timer);A.timer=null;A.marks=[];const ph=$('#playhead');if(ph)ph.hidden=true;updateTransport();if(S.role==='teacher'&&S.tPlay!=null){S.tPlay=null;updateTeacher();}}
@@ -4174,7 +4174,7 @@ function shiftOct(d){const L=S.local;L.oct=Math.min(6,Math.max(2,L.oct+d));updat
 
 let saveT=null;function queueSave(){clearTimeout(saveT);saveT=setTimeout(saveMine,350);}
 function saveMine(){const r=S.room,me=S.me;if(!r||!me||!S.local)return;const L=S.local;
-  const notes=notesOut(L.notes);
+  const notes=notesOut(L.notes).map(a=>a.join(':'));
   const ref=S.db.collection('tracks').doc(tid(r.roomId,me.g,me.c)),patch={name:me.name,owner:me.owner||DEV,inst:L.inst,oct:L.oct,notes,updatedAt:Date.now()};
   return write('track',()=>ref.update(patch).catch(()=>ref.set({roomId:r.roomId,g:me.g,c:me.c,...patch})));}
 
@@ -4521,7 +4521,7 @@ window.addEventListener('hashchange',()=>{stop();applyRoute();S.key='';render();
 // ---------- boot ----------
 async function boot(){
   let db=null;
-  try{firebase.initializeApp(window.GOEM_FIREBASE);S.auth=firebase.auth();db=firebase.firestore();
+  try{firebase.initializeApp(window.GOEM_FIREBASE);S.auth=firebase.auth();db=firebase.firestore();db.settings({ignoreUndefinedProperties:true});
     await new Promise(res=>{const un=S.auth.onAuthStateChanged(()=>{un();res();});});
     if(!S.auth.currentUser)await S.auth.signInAnonymously();
     S.db=db;S.isOwner=true;}

@@ -36,6 +36,11 @@ rep("""    const lease=await ref.acquire({holder:DEV,ttlMs:4000});
     S.local={inst:got.inst,oct:got.oct,notes:toSet(got.notes)};
 """)
 
+# 음표: Firestore는 배열 안의 배열을 못 받아서(저장 실패 → '네트워크' 안내) "칸:줄:길이" 글자로 저장. 읽을 땐 옛 배열도 받음
+rep("function toSet(arr){const s=new Map();(arr||[]).forEach(p=>{if(Array.isArray(p))",
+    "function toSet(arr){const s=new Map();(arr||[]).forEach(p=>{if(typeof p==='string')p=p.split(':').map(Number);if(Array.isArray(p))")
+rep("  const notes=notesOut(L.notes);\n","  const notes=notesOut(L.notes).map(a=>a.join(':'));\n")
+
 # 지휘본부: 잠금 없음(사용자 결정). 누구나 #teacher로 열 수 있음
 
 rep("function routeRole(){const h=(location.hash||'').slice(1);if(h==='student'||h==='solo')return 'student';if(h==='teacher')return S.isOwner===false?'student':'teacher';return null;}",
@@ -48,7 +53,7 @@ rep("""  let db=null;try{db=await window.claude.use('db');}catch(e){db=null;}
   S.db=db;
   try{const u=await window.claude.use('user');S.isOwner=u?await u.isOwner():null;}catch(e){S.isOwner=null;}
 ""","""  let db=null;
-  try{firebase.initializeApp(window.GOEM_FIREBASE);S.auth=firebase.auth();db=firebase.firestore();
+  try{firebase.initializeApp(window.GOEM_FIREBASE);S.auth=firebase.auth();db=firebase.firestore();db.settings({ignoreUndefinedProperties:true});
     await new Promise(res=>{const un=S.auth.onAuthStateChanged(()=>{un();res();});});
     if(!S.auth.currentUser)await S.auth.signInAnonymously();
     S.db=db;S.isOwner=true;}
