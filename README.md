@@ -29,5 +29,6 @@ npx -y firebase-tools@13 deploy --only hosting --project goem-82232
 `index.html`은 claude.ai 아티팩트판(`src/app-vNN.html`)에서 만듭니다.
 
 ```
-python3 tools/add_web.py src/app-v36.html index.html
+python3 tools/add_v37.py <app-v36.html> src/app-v37.html  # V37: 리더 코드 추천, 작전 중 BPM
+python3 tools/add_web.py src/app-v37.html index.html
 ```

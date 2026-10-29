@@ -4131,7 +4131,7 @@ function mountDaw(app){const r=S.room,me=S.me,h=hero(me.c);
         el('button',{type:'button',id:'scMine',onclick:()=>{S.scope='mine';updateTransport();}},'내 채널만'),
         el('button',{type:'button',id:'scGroup',onclick:()=>{S.scope='group';updateTransport();}},'모둠 전체')),
       el('button',{type:'button',id:'padBtn',onclick:()=>{S.pad=!S.pad;updateTransport();const r=S.room,me=S.me,gp=!S.soloOn&&r&&me&&myGroup();if(gp&&gp.leader===me.c)write('grp',()=>S.db.collection('groups').doc(gid(r.roomId,me.g)).update({pad:S.pad}));}},''),
-      el('span',{class:'mono',id:'bpmInfo',style:'color:var(--cyan)'},''),lenSeg()),
+      el('span',{class:'mono',id:'bpmInfo',style:'color:var(--cyan)'},''),liveBpm(),lenSeg()),
     el('div',{id:'lockmsg'}),
     el('div',{class:'daw px'},el('div',{class:'heads',id:'heads'}),el('div',{class:'scroller'},el('div',{class:'lanes',id:'lanes'},el('div',{class:'playhead',id:'playhead',hidden:true})))),
     el('p',{class:'notice'},'칸을 누르면 음이 들어가고, 다시 누르면 빠져요. 음을 누른 채 오른쪽으로 끌거나 ‘음 길이’를 고르면 길게 낼 수 있어요. 밝게 빛나는 줄은 그 마디 코드의 구성음이라 잘 어울려요. 옥타브는 수호대원마다 따로 바꿀 수 있어요.'),
@@ -4229,11 +4229,24 @@ function updateTransport(){const pb=$('#playBtn');if(!pb)return;pb.textContent=A
   $('#scMine').setAttribute('aria-pressed',String(S.scope==='mine'));$('#scGroup').setAttribute('aria-pressed',String(S.scope==='group'));
   const p=$('#padBtn');p.textContent=S.pad?'코드 반주 ON':'코드 반주 OFF';p.setAttribute('aria-pressed',String(S.pad));}
 
+// 작전 중 리더 빠르기 막대: 모둠 문서에 저장 → 모둠원 재생에 바로 반영
+function liveBpm(){const rng=el('input',{type:'range',id:'bpmLive',min:'60',max:'140',step:'5',value:'90','aria-label':'빠르기(리더)',title:'리더만 바꿀 수 있어요'});
+  const box=el('span',{class:'row',id:'bpmLiveBox',style:'gap:6px;display:none'},el('span',{class:'label'},'빠르기'),rng);
+  rng.addEventListener('pointerdown',()=>{S.bpmDrag=true;});
+  rng.addEventListener('input',()=>{S.bpmDrag=true;$('#bpmInfo').textContent=`BPM ${rng.value}`;});
+  rng.addEventListener('change',()=>{S.bpmDrag=false;const r=S.room,me=S.me,gp=r&&me&&myGroup();if(!gp||gp.leader!==me.c)return;const v=+rng.value;
+    S.bpmSeen=v;write('grp',()=>S.db.collection('groups').doc(gid(r.roomId,me.g)).update({bpm:v}));});
+  return box;}
+function updateLiveBpm(grp,ph){const box=$('#bpmLiveBox'),rng=$('#bpmLive');if(!box||!rng)return;const me=S.me,bpm=grp.bpm||90;
+  box.style.display=ph==='running'&&grp.leader===me.c?'flex':'none';
+  if(!S.bpmDrag&&document.activeElement!==rng)rng.value=String(bpm);
+  if(ph==='running'&&S.bpmSeen!=null&&S.bpmSeen!==bpm&&grp.leader!==me.c)toast(`리더가 빠르기를 BPM ${bpm}(으)로 바꿨어요.`);
+  S.bpmSeen=bpm;}
 function updateDaw(){const r=S.room,me=S.me;if(!r||!me||!$('#heads'))return;const grp=myGroup()||{};const ph=phase();
   $('#dawSub').textContent=`대원 ${me.name} · ${r.bars}마디 작전`;
   const pill=$('#phasePill');pill.className='pill '+({lobby:grp.ready?'ok':'',running:'run',ended:'ok'}[ph]||'');
   pill.textContent=ph==='lobby'?(grp.ready?'작전 준비 완료':'작전 회의 중'):PHASE_TXT[ph]||'';
-  $('#bpmInfo').textContent=`BPM ${grp.bpm||90}`;
+  if(!S.bpmDrag)$('#bpmInfo').textContent=`BPM ${grp.bpm||90}`;updateLiveBpm(grp,ph);
   for(const c of gList(r,me.g)){const fc=$('#stg'+c);if(!fc)continue;const d=S.tracks[tid(r.roomId,me.g,c)];fc.replaceChildren(el('b',{style:`color:${chColor(c)}`},hero(c).name),el('span',{},c===me.c?`${me.name} (나)`:d&&d.name?d.name:'빈자리'));
     const fig=fc.parentNode;fig.classList.toggle('empty',!d&&c!==me.c);fig.classList.toggle('muted',!!S.mutes[c]);}
   const rc=$('#rChords');rc.replaceChildren();for(let b=0;b<r.bars;b++){const ch=(grp.chords||[])[b];rc.append(el('div',{style:`width:${SPB*CELL}px;${ch?'':'color:var(--muted)'}`},ch||'·'));}
@@ -4258,6 +4271,7 @@ function renderSetup(grp,ph){const box=$('#setup');box.replaceChildren();if(ph!=
     panel.append(el('div',{class:'palette'},CHORD_LIST.map(n=>el('button',{type:'button','data-nosfx':'1',onclick:()=>{chordPreview(n);chords[S.activeSlot]=n;S.activeSlot=Math.min(r.bars-1,S.activeSlot+1);save({chords,ready:false});}},
       el('b',{},n),el('small',{},CHORDS[n].map(d=>NOTE_KO[d]).join(''))))));
     const row=el('div',{class:'row'});
+    row.append(el('button',{type:'button',onclick:()=>{const p=SOLO_PROGS[Math.floor(Math.random()*SOLO_PROGS.length)];const nc=Array.from({length:r.bars},(_,i)=>p[i%4]);save({chords:nc,ready:false});toast('코드 진행을 새로 뽑았어요: '+p.join(' - '));}},'코드 진행 추천'));
     if(r.bars===8)row.append(el('button',{type:'button',onclick:()=>{for(let i=0;i<4;i++)chords[i+4]=chords[i];save({chords});}},'1~4마디 → 5~8마디 복사'));
     const rng=el('input',{type:'range',id:'bpm',min:'60',max:'140',step:'5',value:String(grp.bpm||90),'aria-label':'빠르기'});
     const lbl=el('span',{class:'mono',style:'color:var(--cyan)'},`BPM ${grp.bpm||90}`);
