@@ -61,4 +61,13 @@ rep("""  let db=null;try{db=await window.claude.use('db');}catch(e){db=null;}
 """)
 rep("if(window.claude&&window.claude.use)boot();else{S.db=null;render();}",
     "if(window.firebase&&window.GOEM_FIREBASE&&window.GOEM_FIREBASE.apiKey)boot();else{S.db=null;applyRoute();render();}")
+# 윈도우에서 '애니메이션 효과'를 끄면(학교 PC에 흔함) 브라우저가 prefers-reduced-motion을 켜서
+# 배경 별·키 아트·캐릭터 움직임이 모두 멈춤. 느린 장식 움직임뿐이라 웹판은 이 설정과 상관없이 움직이게 함
+import re
+n0=s.count('prefers-reduced-motion')
+s,n=re.subn(r'@media \(prefers-reduced-motion: ?reduce\)\{(?:[^{}]*\{[^{}]*\})*\}\n?','',s)
+assert n==5,n
+rep("if(!window.matchMedia||!matchMedia('(prefers-reduced-motion: reduce)').matches)setInterval(loop,110);","setInterval(loop,110);")
+rep("const still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;","const still=false;")
+assert 'prefers-reduced-motion' not in s,s.count('prefers-reduced-motion')
 open(sys.argv[2],'w',encoding='utf8').write(s);print('ok',len(s))

@@ -270,7 +270,6 @@ h1{text-shadow:2px 2px 0 var(--magenta),4px 4px 0 var(--outline)}
   text-shadow:1px 1px 0 var(--outline);box-shadow:0 0 0 1px var(--outline);animation:shard .9s steps(9) both}
 .shard:not(:empty){box-shadow:none;width:auto;height:auto}
 @keyframes shard{0%{opacity:0;transform:none}10%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
-@media (prefers-reduced-motion: reduce){.act1,.act2,.act3,.act4,.act5,.act6,.shard,.keyart-logo,.keyart-logo h1,.keyart-logo .en{animation:none}}
 
 /* ---- V12: 사이버펑크 픽셀 액자 · 모집 로딩 화면 ---- */
 .vframe{position:relative;width:100%;padding:30px 14px 32px;box-sizing:border-box;
@@ -308,7 +307,6 @@ body.recruiting #app{visibility:hidden}
   box-shadow:inset 0 -4px 0 rgba(160,110,0,.55)}
 .rc-sub{display:flex;gap:14px;font-family:var(--f-mono);font-size:var(--t2);letter-spacing:.24em;color:var(--cyan)}
 .rc-pct{color:#ffe04a;min-width:4ch;text-align:right}
-@media (prefers-reduced-motion: reduce){.vframe::before,.vframe::after,.vf-eq i,.vf-rec{animation:none}}
 .pill.big{font-size:var(--t2);padding:6px 14px;gap:10px}
 .pill.big::before{width:12px;height:12px}
 .pill.ok.big::before{animation:blink 1s steps(2) infinite;box-shadow:0 0 6px var(--ok)}
@@ -369,7 +367,6 @@ img.sprite{object-fit:contain}
 .sprite.sheet{display:block;flex:none;background-repeat:no-repeat;background-size:200% 100%;background-position:0 0}
 .sprite.sheet.bob{animation:goem-idle 1000ms steps(2) infinite}
 @keyframes goem-idle{from{background-position-x:0%}to{background-position-x:200%}}
-@media (prefers-reduced-motion: reduce){.sprite.sheet.bob{animation:none;background-position:0 0}}
 /* V21: 픽셀 악기 드롭다운 */
 .patch-sel{min-width:0;max-width:100%;width:100%;margin-top:1px}
 .patch-sel .ps-btn{display:flex;align-items:center;gap:3px;width:100%;min-width:0;padding:1px 3px;font-size:var(--t1);line-height:1.3;font-weight:400;
@@ -412,7 +409,6 @@ a.link-btn:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
 .op-gate-s{font-size:var(--t3);color:var(--cyan);animation:blink 1s steps(1) infinite}
 .op-gate:disabled .op-gate-s{animation:none}
 .op-skip{position:absolute;right:16px;bottom:16px;z-index:2;padding:6px 14px;font-size:var(--t2)}
-@media (prefers-reduced-motion:reduce){.op-gate-s{animation:none}}
 .op-again,.op-again:hover:not(:disabled),.op-again:active:not(:disabled){background:rgba(11,8,32,.82);box-shadow:none;transform:none;color:var(--accent);font-size:var(--t2);padding:6px 10px}
 .op-again:hover:not(:disabled){color:#fff;text-decoration:underline;text-underline-offset:4px}
 .op-ov{transition:none}
@@ -456,7 +452,6 @@ a.link-btn:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
   .cut-banner h1{font-size:var(--t4)}
   .cut-heroes .sprite{width:72px!important;height:72px!important}
 }
-@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 
 <canvas id="scene" aria-hidden="true"></canvas>
@@ -2878,7 +2873,7 @@ function sceneInit(){SC.cv=$('#scene');SC.x=SC.cv.getContext('2d');sceneResize()
   let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
   for(let i=0;i<190;i++)SC.stars.push([rnd(),rnd()*.5,rnd()<.12?2:1,rnd()*6,(rnd()*4)|0]);
   const loop=()=>{SC.t++;drawScene();};drawScene();
-  if(!window.matchMedia||!matchMedia('(prefers-reduced-motion: reduce)').matches)setInterval(loop,110);}
+  setInterval(loop,110);}
 function sceneResize(){const px=2;const w=Math.ceil(window.innerWidth/px),h=Math.ceil(window.innerHeight/px);
   if(w===SC.w&&h===SC.h&&SC.back)return;SC.w=w;SC.h=h;SC.cv.width=w;SC.cv.height=h;sceneBuild();drawScene();}
 
@@ -3105,7 +3100,7 @@ function keyArtStart(cv,wrap){if(!cv.isConnected)return;keyArtFit(cv,wrap);
   if(!KA.bg)KA.bg=keyArtBg();
   if(!KA.imgs)KA.imgs=KEYART.layers.map(l=>{const im=new Image();im.src=l.url;return im;});
   const x=cv.getContext('2d');x.imageSmoothingEnabled=false;
-  const still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const still=false;
   const seen=sessionStorage&&(()=>{try{const v=sessionStorage.getItem('goem-ka');sessionStorage.setItem('goem-ka','1');return !!v;}catch(e){return false;}})();
   const t0=performance.now()-(still||seen?4000:0);let last=0;cancelAnimationFrame(KA.raf);
   wrap.classList.toggle('instant',!!(still||seen));
