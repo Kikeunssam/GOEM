@@ -3,7 +3,8 @@
 모둠별로 코드 진행을 정하고 채널을 나눠 전자음악을 만드는 수업용 웹앱입니다. 원화와 기획: 키큰쌤.
 
 - 첫 화면: `index.html`
-- 학생 출동 링크: `…/#student`, 혼자 연습: `…/#solo`, 지휘본부: `…/#teacher`
+- 학생 출동 링크: `…/#student/작전코드`(예: `#student/5107`), 혼자 연습: `…/#solo`, 지휘본부: `…/#teacher`
+- 작전(방)은 선생님마다 따로예요. 지휘본부에서 작전을 열면 숫자 4자리 **작전 코드**가 생기고, 학생은 그 코드가 든 링크·QR로 들어오거나 `#student`에서 코드를 넣어요. 지휘본부 기기는 연 작전 코드를 기억해요.
 - 수업 자료(작전 수첩 학습지 4마디·8마디): `worksheet/`
 
 ## 실시간 저장소 (Firebase)
@@ -30,5 +31,6 @@ npx -y firebase-tools@13 deploy --only hosting --project goem-82232
 
 ```
 python3 tools/add_v37.py <app-v36.html> src/app-v37.html  # V37: 리더 코드 추천, 작전 중 BPM
-python3 tools/add_web.py src/app-v37.html index.html
+python3 tools/add_v38.py src/app-v37.html src/app-v38.html  # V38: 선생님마다 작전 코드로 방 분리
+python3 tools/add_web.py src/app-v38.html index.html
 ```

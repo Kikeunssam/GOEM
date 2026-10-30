@@ -1,6 +1,6 @@
 """claude.ai 아티팩트판(app-vNN.html) → 깃허브 페이지판(index.html).
 실시간 저장소: claude.ai db → Firebase Firestore(compat SDK). 모두 익명 로그인. 지휘본부는 잠금 없이 누구나(#teacher).
-python3 tools/add_web.py <app-vNN.html> <index.html>
+python3 tools/add_web.py <app-vNN.html> <index.html>  (V38부터: 작전은 rooms/{작전 코드})
 """
 import sys
 s=open(sys.argv[1],encoding='utf8').read()
@@ -43,8 +43,7 @@ rep("  const notes=notesOut(L.notes);\n","  const notes=notesOut(L.notes).map(a=
 
 # 지휘본부: 잠금 없음(사용자 결정). 누구나 #teacher로 열 수 있음
 
-rep("function routeRole(){const h=(location.hash||'').slice(1);if(h==='student'||h==='solo')return 'student';if(h==='teacher')return S.isOwner===false?'student':'teacher';return null;}",
-    "function routeRole(){const h=(location.hash||'').slice(1);if(h==='student'||h==='solo')return 'student';if(h==='teacher')return 'teacher';return null;}")
+rep("if(h==='teacher')return S.isOwner===false?'student':'teacher';return null;}","if(h==='teacher')return 'teacher';return null;}")
 rep("S.role=r||ss('role');if(S.role==='teacher'&&S.isOwner===false)S.role=null;","S.role=r||ss('role');")
 rep("const teacherOk=S.isOwner!==false;","const teacherOk=true;")
 
