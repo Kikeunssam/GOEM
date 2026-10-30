@@ -57,7 +57,7 @@ async function newCode(){for(let i=0;i<30;i++){const c=String(1000+Math.floor(Ma
     if(!d||Date.now()-(d.createdAt||0)>24*3600e3)return c;}
   throw new Error('no free code');}
 function codeForm(id,btnText,onGo){const inp=el('input',{type:'text',id,inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'0000',
-    style:'width:150px;font-family:var(--f-mono);font-size:var(--t5);text-align:center;letter-spacing:.2em'});
+    style:'width:120px;font-family:var(--f-mono);font-size:var(--t3);text-align:center;letter-spacing:.2em'});
   const go=()=>{const v=(inp.value||'').replace(/\\D/g,'');if(!okCode(v)){toast('숫자 4자리를 넣어 주세요.');inp.focus();return;}onGo(v);};
   inp.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
   return el('div',{class:'row',style:'gap:10px'},inp,el('button',{type:'button',class:'btn-primary',onclick:go},btnText));}
