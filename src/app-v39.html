@@ -4576,8 +4576,8 @@ function fromStudent(){return S.soloBack!=null?/^student(\/|$)/.test(S.soloBack)
 function stuHash(){const c=S.code||ss('code');return okCode(c)?'student/'+c:'student';}
 function newKey(){return String(1000+Math.floor(Math.random()*9000));}
 // 작전 코드 + 선생님 번호 → 그 작전의 지휘본부로
-function teacherResumeForm(after){const ci=el('input',{type:'text',inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'작전 코드',style:'width:130px;font-family:var(--f-mono);font-size:var(--t4);text-align:center'});
-  const ki=el('input',{type:'password',inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'선생님 번호',style:'width:130px;font-family:var(--f-mono);font-size:var(--t4);text-align:center'});
+function teacherResumeForm(after){const ci=el('input',{type:'text',inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'작전 코드',style:'width:130px;font-size:var(--t2);text-align:center'});
+  const ki=el('input',{type:'text',inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'선생님 번호',style:'width:130px;font-size:var(--t2);text-align:center;-webkit-text-security:disc'});
   const go=async()=>{const c=(ci.value||'').replace(/\D/g,''),k=(ki.value||'').replace(/\D/g,'');
     if(!okCode(c)){toast('작전 코드 숫자 4자리를 넣어 주세요.');ci.focus();return;}
     try{const snap=await roomDoc(c).get();const d=snap.exists?snap.data():null;
@@ -4600,7 +4600,7 @@ async function newCode(){for(let i=0;i<30;i++){const c=String(1000+Math.floor(Ma
     if(!d||Date.now()-(d.createdAt||0)>24*3600e3)return c;}
   throw new Error('no free code');}
 function codeForm(id,btnText,onGo){const inp=el('input',{type:'text',id,inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'0000',
-    style:'width:150px;font-family:var(--f-mono);font-size:var(--t5);text-align:center;letter-spacing:.2em'});
+    style:'width:120px;font-family:var(--f-mono);font-size:var(--t3);text-align:center;letter-spacing:.2em'});
   const go=()=>{const v=(inp.value||'').replace(/\D/g,'');if(!okCode(v)){toast('숫자 4자리를 넣어 주세요.');inp.focus();return;}onGo(v);};
   inp.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
   return el('div',{class:'row',style:'gap:10px'},inp,el('button',{type:'button',class:'btn-primary',onclick:go},btnText));}

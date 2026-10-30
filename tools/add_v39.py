@@ -31,8 +31,8 @@ function fromStudent(){return S.soloBack!=null?/^student(\\/|$)/.test(S.soloBack
 function stuHash(){const c=S.code||ss('code');return okCode(c)?'student/'+c:'student';}
 function newKey(){return String(1000+Math.floor(Math.random()*9000));}
 // 작전 코드 + 선생님 번호 → 그 작전의 지휘본부로
-function teacherResumeForm(after){const ci=el('input',{type:'text',inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'작전 코드',style:'width:130px;font-family:var(--f-mono);font-size:var(--t4);text-align:center'});
-  const ki=el('input',{type:'password',inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'선생님 번호',style:'width:130px;font-family:var(--f-mono);font-size:var(--t4);text-align:center'});
+function teacherResumeForm(after){const ci=el('input',{type:'text',inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'작전 코드',style:'width:130px;font-size:var(--t2);text-align:center'});
+  const ki=el('input',{type:'text',inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'선생님 번호',style:'width:130px;font-size:var(--t2);text-align:center;-webkit-text-security:disc'});
   const go=async()=>{const c=(ci.value||'').replace(/\\D/g,''),k=(ki.value||'').replace(/\\D/g,'');
     if(!okCode(c)){toast('작전 코드 숫자 4자리를 넣어 주세요.');ci.focus();return;}
     try{const snap=await roomDoc(c).get();const d=snap.exists?snap.data():null;
