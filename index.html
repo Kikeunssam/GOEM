@@ -487,7 +487,7 @@ const HEROES=[
   {name:'벨스파크',role:'고음 마법사',color:'#b46bff',acc:'#4ff3ff'},
   {name:'마림바러너',role:'리듬 정찰병',color:'#ff5fc1',acc:'#39e6a0'}];
 const SPB=8, CELL=24, ROW_MINE=24, ROW_MINI=10;
-const STUDENT_URL=location.origin+location.pathname+'#student';
+const STUDENT_URL=location.origin+location.pathname+'#student';const STUDENT_BASE=STUDENT_URL;
 
 // ---------- QR (qrcode-generator 1.4.4 · MIT) ----------
 const QRGEN=(function(){
@@ -2797,7 +2797,7 @@ function qrBig(url){const close=()=>{ov.remove();document.removeEventListener('k
 
 const S={db:null,isOwner:null,role:null,routed:false,room:null,groups:{},tracks:{},unsubs:[],
   key:'',me:null,local:null,tScreen:null,jg:null,jc:null,scope:'group',pad:true,mutes:{},
-  tPlay:null,activeSlot:0,ending:false,lastLocked:null,soloOn:(location.hash||'').slice(1)==='solo',solo:null,soloBack:null};
+  tPlay:null,activeSlot:0,ending:false,lastLocked:null,soloOn:(location.hash||'').slice(1)==='solo',solo:null,soloBack:null,code:null,watching:undefined,roomState:'loading',roomUnsub:null};
 
 // ---------- utils ----------
 const $=s=>document.querySelector(s);
@@ -3187,7 +3187,7 @@ document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey)ret
 function myGrpDone(){const r=S.room;if(!r||S.role!=='student'||!S.me)return false;const g=S.groups[gid(r.roomId,S.me.g)];return !!(g&&g.done);}
 function endGroup(g){const r=S.room;const ref=S.db.collection('groups').doc(gid(r.roomId,g));
   return write('g'+g,()=>ref.update({done:true})).then(()=>{let all=true;for(let k=1;k<=r.groupCount;k++){if(k===g)continue;const x=S.groups[gid(r.roomId,k)];if(!x||!x.done)all=false;}
-    if(all)return write('room',()=>S.db.doc('rooms/current').update({endAt:Date.now(),status:'ended'}));});}
+    if(all)return write('room',()=>roomDoc().update({endAt:Date.now(),status:'ended'}));});}
 function reopenGroups(){const r=S.room;const ps=[];for(let g=1;g<=r.groupCount;g++){const x=S.groups[gid(r.roomId,g)];if(x&&x.done)ps.push(write('g'+g,()=>S.db.collection('groups').doc(gid(r.roomId,g)).update({done:false})));}return Promise.all(ps);}
 
 // ---------- V14: 수호대원(채널)별 볼륨 게이지. 보는 사람 기기에만 적용(음소거와 같음) ----------
@@ -3610,7 +3610,8 @@ function viewKey(){
   if(!S.role)return 'role';
   const r=S.room;
   if(S.role==='teacher'){if(!r||S.tScreen==='setup')return 'tsetup';return `tdash|${r.roomId}`;}
-  if(!r)return 'swait';
+  if(!S.code)return 'scode';
+  if(!r)return `swait|${S.code}|${S.roomState}`;
   if(!S.me||S.me.roomId!==r.roomId)return `join|${r.roomId}`;
   return `daw|${r.roomId}|${S.me.g}|${S.me.c}`;}
 // ---------- V24: 30초 오프닝 (1990년대 32비트 게임 오프닝 풍, 480x270 논리 화면을 정수배로 확대) ----------
@@ -4037,12 +4038,12 @@ function showListen(g,intro){if(LIS.on)LIS.on.close();const r=S.room;if(!r)retur
   raf=requestAnimationFrame(draw);pb.focus();}
 
 // 메인화면으로: 지휘본부는 작전(방)이 저장소에 그대로 있어서, 다시 '출동 모드'로 들어오면 새로 열지 않는 한 같은 작전으로 돌아옴
-function goHome(){stop();S.role=null;ss('role',null);S.tScreen=null;S.soloOn=false;
+function goHome(){stop();S.role=null;ss('role',null);S.tScreen=null;S.soloOn=false;S.watching=undefined;
   if(location.hash&&location.hash!=='#')location.hash='';else{S.key='';render();}}
 function homeBar(){if(window.GOEM_DEMO)return '';return el('div',{class:'home-bar'},el('button',{type:'button',class:'mini-btn',onclick:goHome},'⌂ 메인화면으로'));}
 function render(){const k=viewKey();if(k!==S.key){S.key=k;const app=$('#app');app.replaceChildren();
     const v=k.split('|')[0];if((v==='tsetup'||v==='tdash'||(v==='solo'&&S.soloBack!=='student')))app.append(homeBar());
-    ({nodb:mountNoDb,role:mountRole,tsetup:mountSetup,tdash:mountTeacher,swait:mountWait,join:mountJoin,daw:mountDaw,solo:mountSolo})[v](app);}
+    ({nodb:mountNoDb,role:mountRole,tsetup:mountSetup,tdash:mountTeacher,scode:mountCode,swait:mountWait,join:mountJoin,daw:mountDaw,solo:mountSolo})[v](app);}
   const v=S.key.split('|')[0];if(v==='tdash')updateTeacher();if(v==='daw')updateDaw();if(v==='join')updateJoin();checkPhase();}
 
 function topbar(title,sub,right){return el('div',{class:'topbar'},el('div',{class:'brand'},el('span',{class:'label'},sub),el('h1',{},title)),right||'');}
@@ -4066,8 +4067,10 @@ function mountRole(app){
     el('button',{type:'button',class:'op-again',onclick:()=>showOpening()},'▶ 오프닝 다시보기'),homeFoot()));
   if(opWanted())setTimeout(()=>showOpening(),0);}
 
-function mountWait(app){app.append(el('div',{class:'title-screen'},bigLogo(),
-  el('div',{class:'px panel stack',style:'max-width:560px;text-align:left'},el('h2',{},'지휘본부의 신호를 기다리는 중'),el('p',{class:'muted'},'선생님이 작전을 열면 이 화면이 자동으로 바뀌어요. 기다리는 동안 혼자 연습해도 좋아요.'),el('div',{},soloBtn()),roleSwitch())));}
+function mountWait(app){const miss=S.roomState==='missing';app.append(el('div',{class:'title-screen'},bigLogo(),
+  el('div',{class:'px panel stack',style:'max-width:560px;text-align:left'},el('h2',{},miss?`작전 코드 ${S.code}를 찾을 수 없어요`:'지휘본부에 연결하는 중'),
+    el('p',{class:'muted'},miss?'코드를 다시 확인해 주세요. 선생님이 이 코드로 작전을 열면 이 화면이 자동으로 바뀌어요.':'잠시만 기다려 주세요.'),
+    el('div',{class:'row'},soloBtn(),changeCodeBtn()),roleSwitch())));}
 function roleSwitch(){if(S.routed)return '';return el('div',{},el('button',{type:'button',class:'mini-btn',onclick:()=>{S.role=null;ss('role',null);stop();if(location.hash)location.hash='';render();}},'처음 화면으로'));}
 
 // ----- join -----
@@ -4079,8 +4082,8 @@ function mountJoin(app){const r=S.room;
       el('div',{class:'stack'},el('label',{class:'label',for:'jname'},'STEP 3 · 대원 이름'),
         el('div',{class:'row'},el('input',{type:'text',id:'jname',maxlength:'10',placeholder:'예: 김하늘',style:'width:220px'}),
           el('button',{type:'button',class:'btn-primary',id:'jgo',onclick:join},'출동!'))),
-      el('p',{class:'notice'},`이번 작전: ${r.groupCount}모둠 · 모둠당 수호대원 ${r.channels}명 · ${r.bars}마디 · ${r.minutes}분`),
-      el('div',{class:'row'},soloBtn('mini-btn'),roleSwitch())));
+      el('p',{class:'notice'},`작전 코드 ${S.code} · 이번 작전: ${r.groupCount}모둠 · 모둠당 수호대원 ${r.channels}명 · ${r.bars}마디 · ${r.minutes}분`),
+      el('div',{class:'row'},soloBtn('mini-btn'),changeCodeBtn(),roleSwitch())));
   const pg=$('#pickG');for(let g=1;g<=r.groupCount;g++)pg.append(el('button',{type:'button','data-g':g,onclick:()=>{S.jg=g;S.jc=null;updateJoin();}},`${g}모둠`));
   updateJoin();}
 function updateJoin(){const r=S.room;if(!r)return;const pg=$('#pickG'),pc=$('#pickC');if(!pg)return;
@@ -4307,7 +4310,7 @@ function soloCtx(){const o=S.solo;if(!o)return null;const list=[];
   o.tracks.forEach(t=>{if(S.mutes[t.c])return;if(S.scope==='mine'&&t.c!==o.active)return;list.push({c:t.c,inst:instKey(t),oct:t.oct,set:t.notes});});
   return {g:0,bpm:o.bpm,total:o.bars*SPB,chords:o.chords,list,pad:S.pad};}
 function enterSolo(){stop();const h=location.hash||'';if(h!=='#solo')S.soloBack=h.slice(1);location.hash='solo';}
-function exitSolo(){stop();location.hash=S.soloBack!=null?S.soloBack:'student';}
+function exitSolo(){stop();location.hash=S.soloBack!=null?S.soloBack:(S.code?'student/'+S.code:'student');}
 function soloBtn(cls){return el('button',{type:'button',class:cls||'',onclick:enterSolo},'♪ 혼자 연습하기');}
 function soloPreview(t){const c=ac(),t0=c.currentTime+.03;
   (t.inst==='drum'?[0,4,1,4]:[0,2,4,7]).forEach((r,i)=>voice(instKey(t),r===7?0:r,r===7?Math.min(6,t.oct+1):t.oct,t0+i*.16,.16,.8));}
@@ -4391,14 +4394,17 @@ function soloEdit(cv){bindNoteEdit(cv,{track:()=>soloTrack(),bars:()=>S.solo.bar
     if(card)card.lastChild.textContent=t.notes.size?`음표 ${t.notes.size}개`:'아직 비어 있어요';}});}
 
 // ----- teacher -----
-function studentLinkBox(){const inp=el('input',{type:'text',id:'stuLink',readonly:true,value:STUDENT_URL,style:'flex:1;min-width:0;font-family:var(--f-mono);font-size:var(--t1)'});
+function studentLinkBox(){const STUDENT_URL=STUDENT_BASE+'/'+S.code;const inp=el('input',{type:'text',id:'stuLink',readonly:true,value:STUDENT_URL,style:'flex:1;min-width:0;font-family:var(--f-mono);font-size:var(--t1)'});
   let qr='';try{const cv=qrCanvas(STUDENT_URL,240);cv.style.width=cv.style.height='120px';
     qr=el('button',{type:'button',title:'QR 크게 보기',style:'padding:0;line-height:0;flex:none;background:#fff',onclick:()=>qrBig(STUDENT_URL)},cv);}catch(e){console.error(e);}
   const info=el('div',{class:'stack',style:'gap:10px;flex:1 1 220px;min-width:0'},
     el('div',{class:'row',style:'flex-wrap:nowrap'},inp,el('button',{type:'button',onclick:async()=>{try{await navigator.clipboard.writeText(STUDENT_URL);toast('링크를 복사했어요.');}catch(_){inp.select();toast('주소를 선택했어요. 복사해서 붙여 넣어 주세요.');}}},'복사')),
     el('a',{href:STUDENT_URL,target:'_blank',rel:'noopener',style:'color:var(--cyan);font-size:var(--t2)'},'▶ 새 탭에서 학생 화면 열기'),
     qr?el('span',{style:'font-size:var(--t2);color:#d8d0ff'},'태블릿은 QR을 카메라로 찍어도 돼요. QR을 누르면 크게 보여요.'):'');
-  return el('div',{class:'px panel stack',style:'gap:10px'},el('span',{class:'label'},'학생 출동 링크 · 학생 기기에서 이 주소로 열어요'),
+  return el('div',{class:'px panel stack',style:'gap:10px'},
+    el('div',{class:'row',style:'gap:12px;align-items:baseline'},el('span',{class:'label'},'작전 코드'),el('b',{style:'font-family:var(--f-mono);font-size:var(--t6);letter-spacing:.15em;color:var(--cyan)'},S.code),
+      el('span',{style:'font-size:var(--t2);color:#d8d0ff'},'링크 없이 들어온 학생은 이 코드를 넣으면 돼요.')),
+    el('span',{class:'label'},'학생 출동 링크 · 학생 기기에서 이 주소로 열어요'),
     el('div',{class:'row',style:'gap:14px;align-items:center;flex-wrap:wrap'},qr,info));}
 function mountSetup(app){const r=S.room;
   const state={groups:r?r.groupCount:6,channels:r?r.channels:4,bars:r?r.bars:4,minutes:r?r.minutes:15};state.heroes=r?chList(r):[1,2,3,4];
@@ -4419,14 +4425,18 @@ function mountSetup(app){const r=S.room;
       hpick,
       el('p',{class:'notice'},'작전을 열면 모둠마다 리더를 정해 주세요. 리더가 코드 진행과 빠르기를 고르고, 모든 모둠이 준비되면 출동 버튼이 열려요. 새 작전을 열면 이전 작전의 작품은 보이지 않아요.'),
       el('div',{class:'row'},el('button',{type:'button',class:'btn-primary btn-big',id:'createBtn',onclick:async()=>{$('#createBtn').disabled=true;await recruitRun(()=>createRoom(state));}},'작전 열기'),
-        r?el('button',{type:'button',onclick:()=>{S.tScreen=null;render();}},'현재 작전으로 돌아가기'):'',roleSwitch())));}
+        r?el('button',{type:'button',onclick:()=>{S.tScreen=null;render();}},'현재 작전으로 돌아가기'):'',roleSwitch())),
+    el('div',{class:'px panel stack'},el('span',{class:'label'},'이미 연 작전 이어서 보기'),
+      el('p',{class:'muted'},'다른 기기에서 연 작전이 있으면 그 작전 코드를 넣어 주세요.'),
+      codeForm('tcode','이어서 보기',async v=>{try{const snap=await roomDoc(v).get();if(!snap.exists){toast(`작전 코드 ${v}를 찾을 수 없어요.`);return;}
+        S.tScreen=null;setTeacherCode(v);render();}catch(e){console.error(e);toast('작전을 불러오지 못했어요. 다시 시도해 주세요.');}})));}
 async function createRoom(st){stop();const roomId='r'+Date.now().toString(36);
-  try{await S.db.doc('rooms/current').set({roomId,groupCount:st.groups,channels:st.channels,heroes:(st.heroes||[]).slice().sort((a,b)=>a-b),bars:st.bars,minutes:st.minutes,status:'lobby',endAt:null,createdAt:Date.now()});
+  try{const code=await newCode();await roomDoc(code).set({code,roomId,groupCount:st.groups,channels:st.channels,heroes:(st.heroes||[]).slice().sort((a,b)=>a-b),bars:st.bars,minutes:st.minutes,status:'lobby',endAt:null,createdAt:Date.now()});
     for(let g=1;g<=st.groups;g++)await S.db.collection('groups').doc(gid(roomId,g)).set({roomId,g,leader:null,chords:Array(st.bars).fill(null),bpm:90,ready:false});
-    S.tScreen=null;S.afterRecruit='작전을 열었어요. 학생들에게 출동 링크를 나눠 주세요.';render();
+    S.tScreen=null;setTeacherCode(code);S.afterRecruit=`작전을 열었어요. 작전 코드는 ${code}예요. 학생들에게 출동 링크나 코드를 나눠 주세요.`;render();
   }catch(e){console.error(e);toast('작전을 열지 못했어요. 다시 시도해 주세요.');const b=$('#createBtn');if(b)b.disabled=false;}}
 function mountTeacher(app){
-  app.append(el('div',{class:'topbar'},el('div',{class:'brand'},el('span',{class:'label',id:'tSub'},''),el('h1',{},'지휘본부')),
+  app.append(el('div',{class:'topbar'},el('div',{class:'brand'},el('span',{class:'label',id:'tSub'},''),el('h1',{},'지휘본부'),codeBadge()),
       el('div',{class:'timer-box px'},el('span',{id:'phasePill',class:'pill'},''),el('div',{class:'timer',id:'timer'},'--:--'))),
     el('div',{class:'px panel row',id:'tCtl',style:'justify-content:space-between'}),
     el('div',{class:'cards',id:'cards'}),
@@ -4439,7 +4449,7 @@ function updateTeacher(){const r=S.room;if(!r||!$('#cards'))return;const ph=phas
   const pill=$('#phasePill');pill.className='pill '+({lobby:all?'ok':'',running:'run',ended:'ok'}[ph]);
   pill.textContent=ph==='lobby'?`준비 완료 ${readyN}/${r.groupCount}`:PHASE_TXT[ph];
   const ctl=$('#tCtl');ctl.replaceChildren();
-  const roomRef=S.db.doc('rooms/current');
+  const roomRef=roomDoc();
   if(ph==='lobby'){
     ctl.append(el('div',{class:'stack',style:'gap:4px'},el('h3',{},all?'모든 모둠이 준비됐어요!':'모둠별 작전 회의 중'),
       el('span',{class:'muted'},all?'출동을 누르면 창작 시간이 흐르기 시작해요.':'리더가 없는 모둠은 아래 카드에서 수호대원을 눌러 지정해 주세요.')),
@@ -4518,14 +4528,14 @@ function checkPhase(){const v=S.key.split('|')[0];const p=phase();
 setInterval(()=>{if(!S.room)return;tickTimer();checkPhase();const lk=locked();
   if(S.lastLocked!==lk){S.lastLocked=lk;render();}
   if(S.role==='teacher'&&S.room.status==='running'&&Date.now()>=S.room.endAt&&!S.ending){S.ending=true;
-    write('room',()=>S.db.doc('rooms/current').update({status:'ended'})).finally(()=>S.ending=false);}},250);
+    write('room',()=>roomDoc().update({status:'ended'})).finally(()=>S.ending=false);}},250);
 window.addEventListener('resize',()=>{if(S.key.startsWith('daw'))drawAll();if(S.key==='solo')soloDraw();});
 
 // ---------- routing ----------
-function routeRole(){const h=(location.hash||'').slice(1);if(h==='student'||h==='solo')return 'student';if(h==='teacher')return 'teacher';return null;}
+function routeRole(){const h=(location.hash||'').slice(1);if(h==='student'||h==='solo'||/^student\/\d{4}$/.test(h))return 'student';if(h==='teacher')return 'teacher';return null;}
 function applyRoute(){S.soloOn=(location.hash||'').slice(1)==='solo';const r=routeRole();S.routed=!!r;S.role=r||ss('role');
   document.title=S.role==='student'?'전자음악수호대 · 출동':S.role==='teacher'?'전자음악수호대 · 지휘본부':'전자음악수호대';}
-window.addEventListener('hashchange',()=>{stop();applyRoute();S.key='';render();});
+window.addEventListener('hashchange',()=>{stop();applyRoute();syncRoom();S.key='';render();});
 
 // ---------- boot ----------
 async function boot(){
@@ -4537,11 +4547,46 @@ async function boot(){
   catch(e){console.error(e);db=null;S.db=null;}
   applyRoute();S.me=ss('me');
   render();if(!db)return;
-  db.doc('rooms/current').onSnapshot(snap=>{const d=snap.exists?snap.data():null;const prev=S.room&&S.room.roomId;S.room=d;
+  syncRoom();render();
+}
+// ---------- V38: 작전 코드(선생님·반마다 따로) ----------
+const TCODE_KEY='goem-tcode';
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(e){}}
+const okCode=v=>/^\d{4}$/.test(String(v||''));
+function roomDoc(code){return S.db.doc('rooms/'+(code||S.code));}
+function hashCode(){const m=(location.hash||'').match(/^#student\/(\d{4})$/);return m?m[1]:null;}
+function wantCode(){if(S.role==='teacher')return lsGet(TCODE_KEY);if(S.role==='student'){const h=hashCode();if(h)ss('code',h);return h||ss('code');}return null;}
+function syncRoom(){if(!S.db)return;const c=wantCode();S.code=okCode(c)?String(c):null;if(S.code===S.watching)return;watchRoom(S.code);}
+function watchRoom(code){if(S.roomUnsub){S.roomUnsub();S.roomUnsub=null;}S.watching=code;
+  stop();S.room=null;S.local=null;S.jg=null;S.jc=null;S.prevPhase=null;subscribeRoomData(null);
+  if(!code){S.roomState='missing';return;}
+  S.roomState='loading';
+  S.roomUnsub=roomDoc(code).onSnapshot(snap=>{if(S.watching!==code)return;const d=snap.exists?snap.data():null;const prev=S.room&&S.room.roomId;S.room=d;S.roomState=d?'ok':'missing';
     if((d&&d.roomId)!==prev){stop();S.local=null;S.jg=null;S.jc=null;subscribeRoomData(d&&d.roomId);S.prevPhase=null;}
     if(S.me&&d&&S.me.roomId!==d.roomId){S.me=null;ss('me',null);}
-    render();},e=>{console.error(e);toast('실시간 연결이 끊겼어요. 페이지를 새로 고쳐 주세요.');});
-}
+    render();},e=>{console.error(e);toast('실시간 연결이 끊겼어요. 페이지를 새로 고쳐 주세요.');});}
+function setTeacherCode(code){lsSet(TCODE_KEY,code);syncRoom();}
+function setStudentCode(code){ss('code',code);S.me=null;ss('me',null);
+  if(code&&location.hash!=='#student/'+code){history.replaceState(null,'','#student/'+code);}
+  else if(!code&&hashCode()){history.replaceState(null,'','#student');}
+  syncRoom();S.key='';render();}
+async function newCode(){for(let i=0;i<30;i++){const c=String(1000+Math.floor(Math.random()*9000));
+    const snap=await roomDoc(c).get();const d=snap.exists?snap.data():null;
+    if(!d||Date.now()-(d.createdAt||0)>24*3600e3)return c;}
+  throw new Error('no free code');}
+function codeForm(id,btnText,onGo){const inp=el('input',{type:'text',id,inputmode:'numeric',maxlength:'4',autocomplete:'off',placeholder:'0000',
+    style:'width:150px;font-family:var(--f-mono);font-size:var(--t5);text-align:center;letter-spacing:.2em'});
+  const go=()=>{const v=(inp.value||'').replace(/\D/g,'');if(!okCode(v)){toast('숫자 4자리를 넣어 주세요.');inp.focus();return;}onGo(v);};
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+  return el('div',{class:'row',style:'gap:10px'},inp,el('button',{type:'button',class:'btn-primary',onclick:go},btnText));}
+function codeBadge(){return S.code?el('span',{class:'pill',style:'font-family:var(--f-mono)'},`작전 코드 ${S.code}`):'';}
+function changeCodeBtn(){return el('button',{type:'button',class:'mini-btn',onclick:()=>setStudentCode(null)},'작전 코드 다시 넣기');}
+function mountCode(app){app.append(el('div',{class:'title-screen'},bigLogo(),
+  el('div',{class:'px panel stack',style:'max-width:560px;text-align:left'},el('h2',{},'작전 코드를 넣어 주세요'),
+    el('p',{class:'muted'},'선생님 화면(지휘본부)에 보이는 숫자 4자리예요. 선생님이 준 링크나 QR로 들어오면 코드를 넣지 않아도 돼요.'),
+    codeForm('scode','입장',v=>setStudentCode(v)),el('div',{},soloBtn()),roleSwitch())));
+  setTimeout(()=>{const i=$('#scode');if(i)i.focus();},0);}
 sceneInit();
 if(window.firebase&&window.GOEM_FIREBASE&&window.GOEM_FIREBASE.apiKey)boot();else{S.db=null;applyRoute();render();}
 })();
