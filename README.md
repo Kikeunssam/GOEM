@@ -5,6 +5,8 @@
 - 첫 화면: `index.html`
 - 학생 출동 링크: `…/#student/작전코드`(예: `#student/5107`), 혼자 연습: `…/#solo`, 지휘본부: `…/#teacher`
 - 작전(방)은 선생님마다 따로예요. 지휘본부에서 작전을 열면 숫자 4자리 **작전 코드**가 생기고, 학생은 그 코드가 든 링크·QR로 들어오거나 `#student`에서 코드를 넣어요. 지휘본부 기기는 연 작전 코드를 기억해요.
+- 작전 코드로 들어온 학생 기기는 8시간 동안 학생 화면에 잠겨요(뒤로가기·메인화면·`#teacher`로 지휘본부에 못 감). 다른 기기에서 지휘본부를 이어 보려면 작전 코드와 **선생님 번호**(지휘본부 '선생님 번호 보기')가 필요해요.
+- 지휘본부 모둠 카드의 '작업 화면 보기'로 모둠의 음표 줄을 실시간으로 볼 수 있어요.
 - 수업 자료(작전 수첩 학습지 4마디·8마디): `worksheet/`
 
 ## 실시간 저장소 (Firebase)
@@ -32,5 +34,7 @@ npx -y firebase-tools@13 deploy --only hosting --project goem-82232
 ```
 python3 tools/add_v37.py <app-v36.html> src/app-v37.html  # V37: 리더 코드 추천, 작전 중 BPM
 python3 tools/add_v38.py src/app-v37.html src/app-v38.html  # V38: 선생님마다 작전 코드로 방 분리
-python3 tools/add_web.py src/app-v38.html index.html
+python3 tools/add_v39.py src/app-v38.html src/app-v39.html  # V39: 학생 기기 잠금, 선생님 번호
+python3 tools/add_v40.py src/app-v39.html src/app-v40.html  # V40: 모둠 작업 화면 실시간 보기
+python3 tools/add_web.py src/app-v40.html index.html
 ```
